@@ -66,9 +66,7 @@ class User extends Authenticatable
      */
     public function hasActivePlan()
 {
-    // Garante que não causa erros se os campos forem null
-    return $this->is_active && 
-           $this->current_plan_id && 
+    return $this->is_active && $this->current_plan_id && 
            ($this->plan_expires_at === null || $this->plan_expires_at > now());
 }
 

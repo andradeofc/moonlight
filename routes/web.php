@@ -34,7 +34,7 @@ Route::get('/test', function() {
     return 'Route test is working!';
 });
 
-// Webhooks
+// Rota para webhook da PerfectPay (não protegida)
 Route::post('/webhook/perfectpay', [WebhookController::class, 'handlePerfectPayWebhook'])->name('webhook.perfectpay');
 
 /*
@@ -48,6 +48,10 @@ Auth::routes();
 // Página inicial
 Route::get('/', function() {
     if (auth()->check()) {
+        // Se o usuário não tem plano ativo, redireciona para a página de planos
+        if (!auth()->user()->hasActivePlan()) {
+            return redirect()->route('plans.index');
+        }
         return redirect()->route('dashboard');
     }
     return redirect()->route('login');
@@ -55,14 +59,26 @@ Route::get('/', function() {
 
 /*
 |--------------------------------------------------------------------------
+| Rotas Protegidas por Autenticação (Sem exigir plano ativo)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth'])->group(function () {
+    // Visualização dos planos - Acessível para todos usuários autenticados
+    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::get('/plans/{plan}', [PlanController::class, 'show'])->name('plans.show');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Rotas Protegidas por Autenticação + Plano Ativo
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'active.plan'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\CheckActivePlan::class])->group(function () {
     // Dashboard e home
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    Route::get('/home', [HomeController::class, 'index'])->name('home.dashboard');
 
     // Logs de tráfego
     Route::get('/logs', [LogController::class, 'index'])->name('logs.index');
@@ -72,56 +88,8 @@ Route::middleware(['auth', 'active.plan'])->group(function () {
         return view('settings');
     })->name('settings');
     
-    // Administração
-    Route::prefix('admin')->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('campaigns.index');
-        });
-        
-        // Domínios
-        Route::resource('domains', DomainController::class);
-        Route::post('/domains/{domain}/verify', [DomainController::class, 'verify'])->name('domains.verify');
-        
-        // Campanhas
-        Route::resource('campaigns', CampaignController::class);
-    });
-}); 
-/*
-|--------------------------------------------------------------------------
-| Rotas Protegidas por Autenticação + Dashboard
-|--------------------------------------------------------------------------
-*/
-
-// REMOVA O MIDDLEWARE active.plan TEMPORARIAMENTE ATÉ ESTAR CORRETAMENTE CONFIGURADO
-Route::middleware(['auth'])->group(function () {
-
-     // Visualização dos planos
-     // Rotas de planos
-        Route::get('/plans', [App\Http\Controllers\PlanController::class, 'index'])->name('plans.index');
-        Route::get('/plans/{id}', [App\Http\Controllers\PlanController::class, 'show'])->name('plans.show');
-    // Dashboard e home
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
-
-    // Logs de tráfego
-    Route::get('/logs', [LogController::class, 'index'])->name('logs.index');
-    
-    // Configurações
-    Route::get('/settings', function () {
-        return view('settings');
-    })->name('settings');
-    
-    // Administração
-    Route::prefix('admin')->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('campaigns.index');
-        });
-        
-        // Domínios
-        Route::resource('domains', DomainController::class);
-        Route::post('/domains/{domain}/verify', [DomainController::class, 'verify'])->name('domains.verify');
-        
-        // Campanhas
-        Route::resource('campaigns', CampaignController::class);
-    });
+    // Campanhas e Domínios
+    Route::resource('campaigns', CampaignController::class);
+    Route::resource('domains', DomainController::class);
+    Route::post('/domains/{domain}/verify', [DomainController::class, 'verify'])->name('domains.verify');
 });

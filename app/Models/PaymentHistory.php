@@ -29,8 +29,8 @@ class PaymentHistory extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'amount' => 'float',
         'data' => 'array',
+        'amount' => 'float',
     ];
 
     /**

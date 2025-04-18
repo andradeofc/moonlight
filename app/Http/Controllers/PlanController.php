@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,23 +14,32 @@ class PlanController extends Controller
      */
     public function index()
     {
-        // Temporariamente, vamos apenas retornar para o dashboard
-        // até que a tabela de planos seja criada
-        Log::info("Exibindo página de planos (temporária)");
+        // Obter apenas os planos Básico, PRO e Freedom
+        $plans = Plan::where('is_active', true)
+                ->whereIn('name', ['Plano Básico', 'Plano PRO', 'Plano Freedom'])
+                ->orderBy('price') // Ordena por preço
+                ->get();
         
-        // Para teste, redirecionamos diretamente para o dashboard
-        return view('plans.fallback');
+        return view('plans.index', compact('plans'));
     }
 
-    /**
+     /**
      * Display the specified plan.
      *
-     * @param  int  $plan
+     * @param  \App\Models\Plan  $plan
      * @return \Illuminate\Http\Response
      */
-    public function show($plan)
+    public function show(Plan $plan)
     {
-        // Implementação temporária
-        return view('plans.fallback');
+        // Verificar se o plano acessado é um dos permitidos
+        $allowedPlans = ['Plano Básico', 'Plano PRO', 'Plano Freedom'];
+        
+        if (!in_array($plan->name, $allowedPlans)) {
+            return redirect()->route('plans.index')
+                ->with('warning', 'Plano não disponível');
+        }
+        
+        $paymentLink = $plan->payment_url; // Use o link de pagamento salvo no banco
+        return view('plans.show', compact('plan', 'paymentLink'));
     }
 }
