@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\Domain;
 use App\Models\TrafficLog;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB; // Adicione esta linha
 
 class CampaignController extends Controller
 {
@@ -141,36 +142,20 @@ class CampaignController extends Controller
     
 public function show(Campaign $campaign)
 {
-    \Log::info('DOMAIN DEBUG:', [
-        'campaign_id' => $campaign->id,
-        'domain_id' => $campaign->domain_id,
-        'domain' => optional($campaign->domain)->name
-    ]);
-
-    // Verifique se o domínio existe no banco
-    $domain = \App\Models\Domain::find($campaign->domain_id);
-    \Log::info('DOMÍNIO NO BANCO:', optional($domain)->toArray());
-
-    // Carregue manualmente a relação
-    if (!$campaign->relationLoaded('domain')) {
-        $campaign->load('domain');
-    }
-        
-    \Log::info('RELACIONAMENTO domain APÓS load():', [
-        'is_object' => is_object($campaign->domain),
-        'loaded?' => $campaign->relationLoaded('domain'),
-        'domain_model' => optional($campaign->domain)->toArray()
-    ]);
-        
+    // Buscar o domínio diretamente do banco usando Eloquent
+    $domain = Domain::find($campaign->domain_id);
+    
     // Gerar URL e parâmetros para exibição
-    $campaignUrl = $campaign->resolved_domain
-    ? "https://{$campaign->resolved_domain}/r/{$campaign->id}"
-    : "Domínio não configurado";
+    $campaignUrl = "";
+    if ($domain) {
+        $campaignUrl = "https://{$domain->name}/r/{$campaign->id}";
+    } else {
+        $campaignUrl = "Domínio não configurado";
+    }
 
     // Verificar se unique_params existe e definir um valor padrão caso contrário
     $uniqueParam = '_param'; // Valor padrão simplificado
     
-    // Se unique_params existir e for um JSON válido, use-o
     if ($campaign->unique_params && json_decode($campaign->unique_params)) {
         $paramsArray = json_decode($campaign->unique_params, true);
         if (is_array($paramsArray) && count($paramsArray) > 0) {
@@ -220,7 +205,6 @@ public function show(Campaign $campaign)
         ->orderBy('created_at', 'desc')
         ->limit(10)
         ->get();
-
     
     return view('campaigns.show', compact('campaign', 'campaignUrl', 'params', 'stats', 'logs'));
 }

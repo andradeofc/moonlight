@@ -373,19 +373,45 @@ private function logTraffic(Request $request, Campaign $campaign, $destination, 
     }
 }
 
-    public function handleDomain(Request $request)
+public function handleDomain(Request $request)
 {
-    $domain = $request->getHost(); // ex: 7e9b-2804-ngrok-free.app
-
+    $domain = $request->getHost();
+    
     \Log::info("Host acessado: " . $domain);
-
-    $campaign = Campaign::where('domain', $domain)->first();
-
-    if (!$campaign) {
-        return redirect('https://google.com'); // fallback
+    
+    // Se estamos no domínio principal, vamos para o dashboard
+    if ($domain === 'lightmoon.app' || $domain === 'www.lightmoon.app') {
+        // Se o usuário estiver autenticado, vá para o dashboard
+        if (auth()->check()) {
+            return redirect()->route('dashboard');
+        }
+        // Se não, vá para a página de login
+        return redirect()->route('login');
     }
-
-    // Redireciona para /r/{id}?tok=...&_param=...
+    
+    // Caso contrário, procuramos uma campanha para este domínio
+    $campaign = Campaign::where('domain_id', function($query) use ($domain) {
+        $query->select('id')
+              ->from('domains')
+              ->where('name', $domain)
+              ->first();
+    })->first();
+    
+    // Se não encontrarmos uma campanha, tentamos buscar pelo nome de domínio diretamente
+    if (!$campaign) {
+        $domain = Domain::where('name', $domain)->first();
+        
+        if ($domain) {
+            $campaign = Campaign::where('domain_id', $domain->id)->first();
+        }
+    }
+    
+    if (!$campaign) {
+        \Log::warning("Nenhuma campanha encontrada para o domínio: " . $domain);
+        return redirect('https://google.com');
+    }
+    
+    // Redireciona para a rota de campanha
     return redirect()->route('campaign.redirect', [
         'campaign_id' => $campaign->id,
         'tok' => $campaign->token,
