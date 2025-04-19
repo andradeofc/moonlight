@@ -40,4 +40,8 @@ class Campaign extends Model
     {
         return $this->hasMany(TrafficLog::class);
     }
+    public function user()
+{
+    return $this->belongsTo(User::class);
+}
 }

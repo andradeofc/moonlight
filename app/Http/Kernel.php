@@ -35,6 +35,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\ForceUtf8::class,
         ],
 
         'api' => [
@@ -65,9 +66,11 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'check.plan' => \App\Http\Middleware\CheckActivePlan::class,
         
-        // Tenta registrar o middleware de maneira diferente
-        //'check.plan' => \App\Http\Middleware\CheckActivePlan::class,
+        // Adicione esta linha com o alias correto
+        'owner' => \App\Http\Middleware\CheckResourceOwnership::class,
+        'admin' => \App\Http\Middleware\AdminAccess::class,
     ];
     
     // Adicionar uma função construct para registrar um log quando o Kernel for inicializado

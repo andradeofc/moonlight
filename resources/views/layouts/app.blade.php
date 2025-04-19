@@ -82,6 +82,16 @@
                             <i class="fas fa-cog me-2"></i> Settings
                         </a>
                     </li>
+
+                    <!-- Adicione o link para o painel admin aqui -->
+                    @if(auth()->check() && auth()->user()->is_admin)
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('admin.dashboard') }}">
+                                <i class="fas fa-cogs"></i> Painel Administrativo
+                            </a>
+                        </li>
+                    @endif
+
                 </ul>
             </div>
             

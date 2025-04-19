@@ -79,4 +79,20 @@ class User extends Authenticatable
     {
         return "{$this->name} {$this->surname}";
     }
+
+    // App/Models/User.php
+public function domains()
+{
+    return $this->hasMany(Domain::class);
+}
+
+public function campaigns()
+{
+    return $this->hasMany(Campaign::class);
+}
+
+public function trafficLogs()
+{
+    return $this->hasManyThrough(TrafficLog::class, Campaign::class);
+}
 }

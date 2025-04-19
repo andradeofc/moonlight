@@ -9,10 +9,11 @@ use App\Models\Campaign;
 class LogController extends Controller
 {
     public function index(Request $request)
-    {
-        // Aplicar filtros
-        $query = TrafficLog::with('campaign');
+{
+    // Iniciar com os logs das campanhas do usuário atual
+    $query = TrafficLog::whereIn('campaign_id', auth()->user()->campaigns()->pluck('id'));
         
+        // Aplicar filtros
         if ($request->has('campaign_id') && $request->campaign_id) {
             $query->where('campaign_id', $request->campaign_id);
         }

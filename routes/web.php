@@ -75,7 +75,7 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', \App\Http\Middleware\CheckActivePlan::class])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard e home
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/home', [HomeController::class, 'index'])->name('home.dashboard');
@@ -88,8 +88,54 @@ Route::middleware(['auth', \App\Http\Middleware\CheckActivePlan::class])->group(
         return view('settings');
     })->name('settings');
     
-    // Campanhas e Domínios
-    Route::resource('campaigns', CampaignController::class);
-    Route::resource('domains', DomainController::class);
-    Route::post('/domains/{domain}/verify', [DomainController::class, 'verify'])->name('domains.verify');
+    // Rotas de Campanhas - com verificação via policy
+    Route::get('campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+    Route::get('campaigns/create', [CampaignController::class, 'create'])->name('campaigns.create');
+    Route::post('campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+    Route::get('campaigns/{campaign}', [CampaignController::class, 'show'])
+        ->name('campaigns.show')
+        ->middleware('can:view,campaign');
+    Route::get('campaigns/{campaign}/edit', [CampaignController::class, 'edit'])
+        ->name('campaigns.edit')
+        ->middleware('can:update,campaign');
+    Route::put('campaigns/{campaign}', [CampaignController::class, 'update'])
+        ->name('campaigns.update')
+        ->middleware('can:update,campaign');
+    Route::delete('campaigns/{campaign}', [CampaignController::class, 'destroy'])
+        ->name('campaigns.destroy')
+        ->middleware('can:delete,campaign');
+    Route::post('campaigns/proceed', [CampaignController::class, 'prePageProceed'])->name('campaigns.proceed');
+    
+    // Rotas de Domínios - com verificação via policy
+    Route::get('domains', [DomainController::class, 'index'])->name('domains.index');
+    Route::get('domains/create', [DomainController::class, 'create'])->name('domains.create');
+    Route::post('domains', [DomainController::class, 'store'])->name('domains.store');
+    Route::get('domains/{domain}', [DomainController::class, 'show'])
+        ->name('domains.show')
+        ->middleware('can:view,domain');
+    Route::get('domains/{domain}/edit', [DomainController::class, 'edit'])
+        ->name('domains.edit')
+        ->middleware('can:update,domain');
+    Route::put('domains/{domain}', [DomainController::class, 'update'])
+        ->name('domains.update')
+        ->middleware('can:update,domain');
+    Route::delete('domains/{domain}', [DomainController::class, 'destroy'])
+        ->name('domains.destroy')
+        ->middleware('can:delete,domain');
+    Route::post('domains/{domain}/verify', [DomainController::class, 'verify'])
+        ->name('domains.verify')
+        ->middleware('can:verify,domain');
+});
+
+
+// Rotas do painel administrativo - protegidas pelo middleware 'admin'
+Route::middleware(['auth', \App\Http\Middleware\AdminAccess::class])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/users', [App\Http\Controllers\Admin\AdminController::class, 'users'])->name('users');
+    Route::get('/users/{user}/edit', [App\Http\Controllers\Admin\AdminController::class, 'editUser'])->name('users.edit');
+    Route::put('/users/{user}', [App\Http\Controllers\Admin\AdminController::class, 'updateUser'])->name('users.update');
+    Route::get('/traffic-logs', [App\Http\Controllers\Admin\AdminController::class, 'trafficLogs'])->name('traffic-logs');
+    Route::get('/campaigns', [App\Http\Controllers\Admin\AdminController::class, 'campaigns'])->name('campaigns');
+    Route::get('/domains', [App\Http\Controllers\Admin\AdminController::class, 'domains'])->name('domains');
+    Route::get('/plans', [App\Http\Controllers\Admin\AdminController::class, 'plans'])->name('plans');
 });

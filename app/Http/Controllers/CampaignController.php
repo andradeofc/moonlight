@@ -13,33 +13,35 @@ use Illuminate\Support\Facades\DB; // Adicione esta linha
 class CampaignController extends Controller
 {
     public function index()
-{
-    $campaigns = Campaign::with('domain')
-        ->withCount([
-            'trafficLogs',
-            'trafficLogs as offer_logs_count' => function ($query) {
-                $query->where('destination', 'offer');
-            }
-        ])
-        ->get()
-        ->map(function ($campaign) {
-            $campaign->connect_rate = $campaign->traffic_logs_count > 0
-                ? $campaign->offer_logs_count / $campaign->traffic_logs_count
-                : 0;
-            return $campaign;
-        });
-
-    return view('campaigns.index', compact('campaigns'));
-}
-    
-    public function create()
     {
-        return view('campaigns.create', [
-            'domains' => Domain::where('verified', true)->get()
-        ]);
+        $campaigns = auth()->user()->campaigns()
+            ->with('domain')
+            ->withCount([
+                'trafficLogs',
+                'trafficLogs as offer_logs_count' => function ($query) {
+                    $query->where('destination', 'offer');
+                }
+            ])
+            ->get()
+            ->map(function ($campaign) {
+                $campaign->connect_rate = $campaign->traffic_logs_count > 0
+                    ? $campaign->offer_logs_count / $campaign->traffic_logs_count
+                    : 0;
+                return $campaign;
+            });
+    
+        return view('campaigns.index', compact('campaigns'));
     }
     
-    public function store(Request $request)
+    public function create()
+{
+    // Apenas domínios verificados do usuário atual
+    return view('campaigns.create', [
+        'domains' => auth()->user()->domains()->where('verified', true)->get()
+    ]);
+}
+    
+public function store(Request $request)
 {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
@@ -55,6 +57,12 @@ class CampaignController extends Controller
         'tags' => 'nullable|array',
     ]);
     
+    // Verificar se o domínio pertence ao usuário
+    $domain = auth()->user()->domains()->find($validated['domain_id']);
+    if (!$domain) {
+        return back()->with('error', 'O domínio selecionado não pertence a você.');
+    }
+
     // Gerar valores aleatórios
     $token = Str::random(8);
     $unique_id = Str::random(8);
@@ -67,7 +75,8 @@ class CampaignController extends Controller
         'xid' => $xid
     ]);
     
-    $campaign = Campaign::create([
+    // Criar a campanha associada ao usuário atual
+    $campaign = auth()->user()->campaigns()->create([
         'name' => $validated['name'],
         'domain_id' => $validated['domain_id'],
         'language' => $validated['language'],
@@ -82,7 +91,7 @@ class CampaignController extends Controller
         'token' => $token,
         'unique_id' => $unique_id,
         'unique_params' => json_encode([$uniqueParam => $unique_id]),
-        'xid' => $xid, // Certifique-se de que o XID está sendo incluído 
+        'xid' => $xid,
         'is_active' => $request->has('is_active')
     ]);
 
@@ -142,6 +151,8 @@ class CampaignController extends Controller
     
 public function show(Campaign $campaign)
 {
+
+    
     // Buscar o domínio diretamente do banco usando Eloquent
     $domain = Domain::find($campaign->domain_id);
     
@@ -209,18 +220,22 @@ public function show(Campaign $campaign)
     return view('campaigns.show', compact('campaign', 'campaignUrl', 'params', 'stats', 'logs'));
 }
     
-    public function edit(Campaign $campaign)
-    {
-        $campaign->load('domain');
-        
-        return view('campaigns.edit', [
-            'campaign' => $campaign,
-            'domains' => Domain::where('verified', true)->get()
-        ]);
-    }
+public function edit(Campaign $campaign)
+{
+    
+    
+    $campaign->load('domain');
+    
+    return view('campaigns.edit', [
+        'campaign' => $campaign,
+        'domains' => auth()->user()->domains()->where('verified', true)->get()
+    ]);
+}
     
     public function update(Request $request, Campaign $campaign)
     {
+    
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'domain_id' => 'required|exists:domains,id',
@@ -254,8 +269,10 @@ public function show(Campaign $campaign)
             ->with('success', 'Campaign updated successfully');
     }
     
-    public function destroy(Campaign $campaign)
+ public function destroy(Campaign $campaign)
 {
+    
+    
     $campaign->trafficLogs()->delete();
     $campaign->delete();
 

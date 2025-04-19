@@ -10,44 +10,47 @@ use App\Models\Campaign;
 class DomainController extends Controller
 {
     public function index()
-    {
-        return view('domains.index', [
-            'domains' => Domain::all()
-        ]);
-    }
+        {
+            return view('domains.index', [
+                'domains' => auth()->user()->domains()->get()
+            ]);
+        }
     
     
-    public function create()
-    {
-        return view('domains.create');
-    }
+        public function create()
+        {
+            return view('domains.create');
+        }
     
-    public function store(Request $request)
+        public function store(Request $request)
+        {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:domains',
+            ]);
+        
+            // ✅ CNAME padrão para todos os domínios 
+            $cnameRecord = 'connect.lightmoon.app';
+        
+            $domain = auth()->user()->domains()->create([
+                'name' => $validated['name'],
+                'cname_record' => $cnameRecord,
+                'verified' => false
+            ]);
+        
+            return redirect()->route('domains.show', $domain)
+                ->with('success', 'Domain added successfully. Please point your CNAME to: ' . $cnameRecord);
+        }
+        
+        public function show(Domain $domain)
 {
-    $validated = $request->validate([
-        'name' => 'required|string|max:255|unique:domains',
-    ]);
-
-    // ✅ CNAME padrão para todos os domínios 
-    $cnameRecord = 'connect.lightmoon.app';
-
-    $domain = Domain::create([
-        'name' => $validated['name'],
-        'cname_record' => $cnameRecord,
-        'verified' => false
-    ]);
-
-    return redirect()->route('domains.show', $domain)
-        ->with('success', 'Domain added successfully. Please point your CNAME to: ' . $cnameRecord);
-}
     
-    public function show(Domain $domain)
-    {
-        return view('domains.show', compact('domain'));
-    }
+    
+    return view('domains.show', compact('domain'));
+}
     
     public function verify(Domain $domain)
 {
+    
     try {
         $verified = false;
         $expectedTarget = 'connect.lightmoon.app';
@@ -107,8 +110,10 @@ class DomainController extends Controller
 
 public function destroy(Domain $domain)
 {
-    // Verificar se o domínio está sendo usado em alguma campanha
-    $campaignsUsingDomain = Campaign::where('domain_id', $domain->id)->count();
+    
+    
+    // Verificar se o domínio está sendo usado em alguma campanha do usuário
+    $campaignsUsingDomain = auth()->user()->campaigns()->where('domain_id', $domain->id)->count();
     
     if ($campaignsUsingDomain > 0) {
         return back()->with('error', 'Cannot delete this domain. It is being used in ' . $campaignsUsingDomain . ' campaign(s). Please remove the domain from all campaigns first.');
